@@ -161,6 +161,7 @@ class mod_poasassignment_mod_form extends moodleform_mod {
         //----------------------------------------------------------------------
         $this->standard_coursemodule_elements();
 
+        $this->standard_grading_coursemodule_elements();
         // add standard buttons, common to all modules
         //----------------------------------------------------------------------
         $this->add_action_buttons();
@@ -195,7 +196,7 @@ class mod_poasassignment_mod_form extends moodleform_mod {
             $default_values['poasassignmentfiles'] = $draftitemid;
         }
         if(isset($default_values['taskgiverid'])) {
-            //echo ' уменьшаем с '.$default_values['taskgiverid'];
+            //echo ' пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ '.$default_values['taskgiverid'];
             $default_values['taskgiverid'] = $default_values['taskgiverid']/*-1*/;
         }
         
