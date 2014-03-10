@@ -143,7 +143,18 @@
         <KEY NAME="answerid" TYPE="foreign" FIELDS="answerid" REFTABLE="poasassignment_answers" REFFIELDS="id" PREVIOUS="attemptid"/>
       </KEYS>
     </TABLE>
-    <TABLE NAME="poasassignment_rating_values" COMMENT="Default comment for the table, please edit me" PREVIOUS="poasassignment_submissions" NEXT="poasassignment_variants">
+    <TABLE NAME="poasassignment_rating" COMMENT="Default comment for the table, please edit me" PREVIOUS="poasassignment_submissions" NEXT="poasassignment_rating_values">
+      <FIELDS>
+          <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="value"/>
+          <FIELD NAME="value" TYPE="int" LENGTH="10" NOTNULL="false" UNSIGNED="true" SEQUENCE="false" PREVIOUS="id" NEXT="attemptid"/>
+          <FIELD NAME="attemptid" TYPE="int" LENGTH="10" NOTNULL="false" UNSIGNED="true" SEQUENCE="false" PREVIOUS="value"/>
+      </FIELDS>
+      <KEYS>
+          <KEY NAME="primary" TYPE="primary" FIELDS="id" NEXT="attemptid"/>
+          <KEY NAME="attemptid" TYPE="foreign" FIELDS="attemptid" REFTABLE="poasassignment_attempts" REFFIELDS="id" PREVIOUS="primary"/>
+      </KEYS>
+    </TABLE>
+    <TABLE NAME="poasassignment_rating_values" COMMENT="Default comment for the table, please edit me" PREVIOUS="poasassignment_rating" NEXT="poasassignment_variants">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="criterionid"/>
         <FIELD NAME="criterionid" TYPE="int" LENGTH="10" NOTNULL="false" UNSIGNED="true" SEQUENCE="false" PREVIOUS="id" NEXT="value"/>

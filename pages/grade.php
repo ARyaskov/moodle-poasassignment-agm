@@ -92,13 +92,7 @@ class grade_form extends moodleform {
         require_once('attempts.php');
         $mform->addElement('static',null,null,attempts_page::show_attempt($attempt));
         //$mform->addElement('header','gradeeditheader',get_string('gradeeditheader','poasassignment'));
-        $criterions=$DB->get_records('poasassignment_criterions',array('poasassignmentid'=>$instance['poasassignmentid']));
-        for($i=0;$i<101;$i++) 
-            $opt[]=$i.'/100';
-        $weightsum = 0;
-        foreach($criterions as $criterion) 
-            $weightsum += $criterion->weight;
-        
+
         $context = get_context_instance(CONTEXT_MODULE, $instance['id']);
 
         $options = new stdClass();
@@ -117,41 +111,6 @@ class grade_form extends moodleform {
             $this->set_data($data);
         }
 
-        /*
-        foreach($criterions as $criterion) {
-            $mform->addElement('html', $OUTPUT->box_start());
-            // show grading element
-            if($attempt->draft == 0 || 
-               has_capability('mod/poasassignment:manageanything', $context)) {
-                $mform->addElement('select',
-                                   'criterion' . $criterion->id,
-                                   $criterion->name . ' ' . $poasmodel->help_icon($criterion->description),
-                                   $opt);
-            }
-            // show normalized criterion weight
-            $mform->addElement('static',
-                               'criterion' . $criterion->id . 'weight',
-                               get_string('normalizedcriterionweight', 'poasassignment'),
-                               round($criterion->weight / $weightsum, 2));
-            
-            // show feedback
-            $ratingvalue = $DB->get_record('poasassignment_rating_values', array('criterionid' => $criterion->id,
-                                                                                 'attemptid' => $attempt->id));
-            if($ratingvalue) {
-                $options->itemid = $ratingvalue->id;
-                $comment= new comment($options);
-                $mform->addElement('static', 
-                                   'criterion' . $criterion->id . 'comment',
-                                   get_string('comment', 'poasassignment'),
-                                   $comment->output(true));
-            }
-            else
-                $mform->addElement('htmleditor','criterion'.$criterion->id.'comment',get_string('comment','poasassignment'));   
-            
-            $mform->addElement('html',$OUTPUT->box_end());
-        }*/
-
-
         if($attempt->draft == 0 || has_capability('mod/poasassignment:manageanything',$context)) {
             $mform->addElement('checkbox', 'final', get_string('finalgrade','poasassignment'));
         }
@@ -160,8 +119,6 @@ class grade_form extends moodleform {
         $mform->addElement('filemanager', 'commentfiles_filemanager', get_string('commentfiles','poasassignment'));
         
         // hidden params
-        $mform->addElement('hidden', 'weightsum', $weightsum);
-        $mform->setType('weightsum', PARAM_FLOAT);
         
         $mform->addElement('hidden', 'id', $instance['id']);
         $mform->setType('id', PARAM_INT);

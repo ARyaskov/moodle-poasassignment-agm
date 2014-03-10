@@ -781,8 +781,8 @@ class poasassignment_model {
             //echo "$dfk=>$dfv<br>";
             //echo $data->criterion1.'<br>';
         }
-        $criterions = $DB->get_records('poasassignment_criterions',
-                                       array('poasassignmentid' => $this->poasassignment->id));
+        //$criterions = $DB->get_records('poasassignment_criterions',
+        //                               array('poasassignmentid' => $this->poasassignment->id));
         $rating = 0;
         $cm = get_coursemodule_from_instance('poasassignment', $this->poasassignment->id);
         $context = get_context_instance(CONTEXT_MODULE, $cm->id);
@@ -798,8 +798,8 @@ class poasassignment_model {
         $attemptscount = $DB->count_records('poasassignment_attempts', array('assigneeid' => $assigneeid));
         $attempt = $DB->get_record('poasassignment_attempts',
                                    array('assigneeid' => $assigneeid, 'attemptnumber' => $attemptscount));
-        foreach ($criterions as $criterion) {
-            $elementname = 'criterion'.$criterion->id;
+        //foreach ($criterions as $criterion) {
+        /*    $elementname = 'criterion'.$criterion->id;
             $elementcommentname = 'criterion'.$criterion->id.'comment';
             if (!$DB->record_exists('poasassignment_rating_values', array('attemptid' => $attempt->id, 'criterionid' => $criterion->id))) {
                 $rec = new stdClass();
@@ -826,8 +826,8 @@ class poasassignment_model {
             }
             if ($attempt->draft == 0) {
                 $rating += $data->$elementname * round($criterion->weight / $data->weightsum, 2);
-            }
-        }
+            }*/
+        //}
         if ($attempt->draft == 0) {
             $attempt->rating = $rating;
         }
@@ -2880,5 +2880,70 @@ class poasassignment_model {
         }
         return $gradinginstance;
     }
+
+    /**
+     * Apply a grade from a grading form to a user (may be called multiple times for a group submission).
+     *
+     * @param stdClass $formdata - the data from the form
+     * @param int $userid - the user to apply the grade to
+     * @param int $attemptnumber - The attempt number to apply the grade to.
+     * @return void
+     */
+    public function apply_grade_to_user($formdata, $userid, $attemptnumber) {
+        global $USER, $CFG, $DB;
+
+        $grade = $this->get_user_grade($userid, true, $attemptnumber);
+        $gradingdisabled = $this->grading_disabled($userid);
+        $gradinginstance = $this->get_grading_instance($userid, $grade, $gradingdisabled);
+        if (!$gradingdisabled) {
+            if ($gradinginstance) {
+                $grade->grade = $gradinginstance->submit_and_get_grade($formdata->advancedgrading,
+                    $grade->id);
+            } else {
+                // Handle the case when grade is set to No Grade.
+                if (isset($formdata->grade)) {
+                    $grade->grade = grade_floatval(unformat_float($formdata->grade));
+                }
+            }
+            if (isset($formdata->workflowstate) || isset($formdata->allocatedmarker)) {
+                $flags = $this->get_user_flags($userid, true);
+                $flags->workflowstate = isset($formdata->workflowstate) ? $formdata->workflowstate : $flags->workflowstate;
+                $flags->allocatedmarker = isset($formdata->allocatedmarker) ? $formdata->allocatedmarker : $flags->allocatedmarker;
+                $this->update_user_flags($flags);
+            }
+        }
+        $grade->grader= $USER->id;
+
+        $adminconfig = $this->get_admin_config();
+        $gradebookplugin = $adminconfig->feedback_plugin_for_gradebook;
+
+        // Call save in plugins.
+        foreach ($this->feedbackplugins as $plugin) {
+            if ($plugin->is_enabled() && $plugin->is_visible()) {
+                if (!$plugin->save($grade, $formdata)) {
+                    $result = false;
+                    print_error($plugin->get_error());
+                }
+                if (('assignfeedback_' . $plugin->get_type()) == $gradebookplugin) {
+                    // This is the feedback plugin chose to push comments to the gradebook.
+                    $grade->feedbacktext = $plugin->text_for_gradebook($grade);
+                    $grade->feedbackformat = $plugin->format_for_gradebook($grade);
+                }
+            }
+        }
+        $this->update_grade($grade);
+        $this->notify_grade_modified($grade);
+
+        $addtolog = $this->add_to_log('grade submission', $this->format_grade_for_log($grade), '', true);
+        $params = array(
+            'context' => $this->context,
+            'objectid' => $grade->id,
+            'relateduserid' => $userid
+        );
+        $event = \mod_assign\event\submission_graded::create($params);
+        $event->set_legacy_logdata($addtolog);
+        $event->trigger();
+    }
+
 
 }
