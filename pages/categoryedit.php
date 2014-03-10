@@ -4,8 +4,6 @@ require_once('abstract_page.php');
 require_once(dirname(dirname(__FILE__)) . '/model.php');
 class categoryedit_page extends abstract_page {
     private $mform;
-    function criterions_page() {        
-    }
     
     function get_cap() {
         return 'mod/poasassignment:managetasksfields';

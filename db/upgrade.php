@@ -85,6 +85,12 @@ function xmldb_poasassignment_upgrade($oldversion=0) {
 // $dbman->drop_table($table);
 //}
 
+// $table = new xmldb_table('poasassignment_used_graders');
+
+//if ($dbman->table_exists($table)) {
+// $dbman->drop_table($table);
+//}
+
     }
     upgrade_mod_savepoint(true, 2014010100, 'poasassignment');
     return $result;

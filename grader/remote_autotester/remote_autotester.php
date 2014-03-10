@@ -316,25 +316,26 @@ class remote_autotester extends grader{
         return FALSE;
     }
 
+    // TODO: Rewrite it according to the new criterion-free implementation of PoasAssignment
     public static function put_rating($poasassignmentid, $assigneeid) {
         $model = poasassignment_model::get_instance();
         // to aviod problems with submission page, grade passed attempt AND last attempt
         $statistics = self::get_grade_statistics(self::get_attempts_results($assigneeid));
-        if ($statistics['firstpassedattempt'] && $statistics['lastattempt']) {
+        /*if ($statistics['firstpassedattempt'] && $statistics['lastattempt']) {
             // If has passed attempt - update graderbook
             $criterions = $model->get_criterions($poasassignmentid, self::get_my_id());
             $criterionids = array();
             foreach ($criterions as $criterion) {
                 $criterionids[] = $criterion->id;
             }
-            $model->delete_rating_values($criterionids, $statistics['firstpassedattempt']);
-            $model->delete_rating_values($criterionids, $statistics['lastattempt']);
+            $model->delete_rating($statistics['firstpassedattempt']);
+            $model->delete_rating($statistics['lastattempt']);
             foreach ($criterions as $criterion) {
-                $model->put_rating($criterion->id, $statistics['firstpassedattempt'], 100, '');
-                $model->put_rating($criterion->id, $statistics['lastattempt'], 100, '');
+                $model->put_rating($statistics['firstpassedattempt'], 100, '');
+                $model->put_rating($statistics['lastattempt'], 100, '');
             }
             $model->recalculate_rating($assigneeid);
-        }
+        }*/
     }
 
     /**

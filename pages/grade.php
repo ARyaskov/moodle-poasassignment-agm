@@ -38,6 +38,8 @@ class grade_page extends abstract_page{
         else {
             if($data = $this->mform->get_data()) {
                 $poasmodel->save_grade($this->assigneeid, $data);
+                // Advanced Grading
+
                 redirect(new moodle_url('view.php',array('id'=>$cmid,'page'=>'submissions')),null,0);
             }
         }

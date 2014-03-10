@@ -20,9 +20,6 @@
 .poasassignment-table td.center {text-align:center;}
 .poasassignment-table input[type=radio] {margin:0; text-align: center;}
 
-#citerions-table td {border: 1px solid #ddd;}
-#criterions-table .c0 {text-align:right; font-weight:bold; background: #f6f6f6;}
-
 p.no-info-message {text-align: center;}
 
 #page-mod-poasassignment-view input[type=submit] {padding: 2px 4px}

@@ -22,7 +22,7 @@ class autotester extends grader{
             $errors['answerfile'] = get_string('fileanswermustbeenabled',
                                                'poasassignment_autotester');            
         }
-        //TODO проверить режим инд. заданий
+        //TODO пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     }
     private $cpath = 'D:\Program Files\Microsoft Visual Studio 9.0\VC\\';
     
@@ -275,44 +275,44 @@ class autotester extends grader{
         $commentoptions->component = 'mod_poasassignment';
         return $commentoptions;
     }
-    // Заполняются после выполнения оценивания (массив simple_test_result'ов)
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ simple_test_result'пїЅпїЅ)
     private $testresults;
     private $successfultestscount;
     
     public function show_result($options) {
     }
     
-    // TODO: работа с тестами когда ими займусь ближе
+    // TODO: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         
-    // Редактирование тестов( Отвечает за добавление новых тестов и редактирование существующих)
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ( пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
     function edit_tests($tests) {
         return null;
     }
-    // Отключает тест
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
     function turn_off_test($testid) {
         return null;
     }
-    // Полностью удаляет тест
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
     function delete_test($testid) {
         return null;
     }
     
-    // Экспорт тестов
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     function tests_export($exportParams) {
         return null;
     }
     
-    // Импорт тестов
+    // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     function tests_import($importParams) {
         return null;
     }
         
-    // Производит оценку ответа $submission на задание $taskid конкретного poasassignment'a
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ $submission пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ $taskid пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ poasassignment'a
     function evaluate($submission, $poasassignmentid, $taskid = -1) {
         return array();
     }
         
-    // Отображает список тестов
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     function show_tests($poasassignmentid, $taskid=-1){
     
     }
@@ -546,7 +546,7 @@ class autotester extends grader{
         if (!has_capability('mod/poasassignment_grader:rating', $context)) {
             return '';
         }
-        $val = $DB->get_record('poasassignment_rating_values', array('attemptid' => $attemptid));
+        $val = $DB->get_record('poasassignment_rating', array('attemptid' => $attemptid));
         if (!$val) {
             $rating = 0;
         }
@@ -582,6 +582,8 @@ class autotester extends grader{
         }
         return $html;
     }
+
+    // TODO: Rewrite it according to the new criterion-free implementation of PoasAssignment
     private function update_results($attemptid) {
         
         global $DB;
@@ -589,7 +591,7 @@ class autotester extends grader{
         $model = poasassignment_model::get_instance();
         if(has_capability('mod/poasassignment:grade', poasassignment_model::get_instance()->get_context())) {
             //print link 
-            $resultid = optional_param('resultid', 0, PARAM_INT);
+            /*$resultid = optional_param('resultid', 0, PARAM_INT);
             $testpassed = optional_param('testpassed', 0, PARAM_INT);
             
             if($result = $DB->get_record('poasassignment_gr_at_res', array('id' => $resultid))) {
@@ -618,8 +620,7 @@ class autotester extends grader{
                                                  'graderid' => $this->get_my_id()));
                                                  
                                     foreach ($criterions as $criterion) {
-                                        $ratingvalue = $DB->get_record('poasassignment_rating_values', array('criterionid' => $criterion->id,
-                                                                                                             'attemptid' => $attemptid));
+                                        $ratingvalue = $DB->get_record('poasassignment_rating', array('attemptid' => $attemptid));
                                         $ratingvalue->value = $grade;
                                         $ratingvalueid = $DB->update_record('poasassignment_rating_values', $ratingvalue);
                                     }
@@ -643,7 +644,7 @@ class autotester extends grader{
                         }
                     }
                 }
-            }
+            }*/
         }
         return $html;
     }

@@ -51,7 +51,7 @@ switch ($action) {
             $attempts=$DB->get_records('poasassignment_attempts',array('assigneeid'=>$assigneeid));
             foreach($attempts as $attempt) {
                 $DB->delete_records('poasassignment_submissions',array('attemptid'=>$attempt->id));
-                $DB->delete_records('poasassignment_rating_values',array('attemptid'=>$attempt->id));
+                $DB->delete_records('poasassignment_rating',array('attemptid'=>$attempt->id));
             }
             $DB->delete_records('poasassignment_attempts',array('assigneeid'=>$assigneeid));
             if (has_capability('mod/poasassignment:managetasks',$context)) {

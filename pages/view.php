@@ -184,7 +184,6 @@ class view_page extends abstract_page {
 
         $attempts=array_reverse($DB->get_records('poasassignment_attempts',array('assigneeid'=>$assignee->id),'attemptnumber'));
         $plugins=$poasmodel->get_plugins();
-        $criterions=$DB->get_records('poasassignment_criterions',array('poasassignmentid'=>$this->poasassignment->id));
         $latestattempt = $poasmodel->get_last_attempt($assignee->id);
         $attemptscount=count($attempts);
         // show latest graded feedback
@@ -196,8 +195,7 @@ class view_page extends abstract_page {
             echo $OUTPUT->heading(get_string('lastgraded','poasassignment'));
             $hascap = has_capability('mod/poasassignment:viewownsubmission', $poasmodel->get_context());
             echo attempts_page::show_attempt($attempt, $hascap);
-            $canseecriteriondescr = has_capability('mod/poasassignment:seecriteriondescription', $poasmodel->get_context());
-            attempts_page::show_feedback($attempt, $latestattempt, $canseecriteriondescr);
+            attempts_page::show_feedback($attempt, $latestattempt);
             echo $OUTPUT->box_end();
             break;
         }

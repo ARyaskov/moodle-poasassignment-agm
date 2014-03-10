@@ -60,7 +60,6 @@ class poasassignment_model {
                                     'view' => 'pages/view.php',
                                     'attempts' => 'pages/attempts.php',
                                     'graderresults' => 'pages/graderresults.php',
-                                    'criterions' => 'pages/criterions.php',
                                     'graders' => 'pages/graders.php',
                                     'submissions' => 'pages/submissions.php',
                                     'grade' => 'pages/grade.php',
@@ -239,14 +238,6 @@ class poasassignment_model {
         $this->context = get_context_instance(CONTEXT_MODULE, $this->poasassignment->coursemodule);
         $this->save_files($this->poasassignment->poasassignmentfiles, 'poasassignmentfiles', 0);
 
-        // Create 1 criterion
-        $criterion = new stdClass();
-        $criterion->name = get_string('standardcriterionname', 'poasassignment');
-        $criterion->description = get_string('standardcriteriondesc', 'poasassignment');
-        $criterion->weight = 1;
-        $criterion->graderid = 0;
-        $criterion->poasassignmentid = $this->poasassignment->id;
-        $DB->insert_record('poasassignment_criterions', $criterion);
         //$this->grade_item_update();
         return $this->poasassignment->id;
     }
@@ -335,7 +326,6 @@ class poasassignment_model {
         }
         $DB->delete_records('poasassignment_used_graders',array('poasassignmentid' => $id));
         $DB->delete_records('poasassignment_ans_stngs', array('poasassignmentid' => $id));
-        $DB->delete_records('poasassignment_criterions', array('poasassignmentid' => $id));
         $fields=$DB->get_records('poasassignment_fields', array('poasassignmentid' => $id));
         foreach ( $fields as $field) {
             $DB->delete_records('poasassignment_task_values', array('fieldid' => $field->id));
@@ -602,62 +592,7 @@ class poasassignment_model {
         }
         return $task;
     }
-    function get_criterions_data() {
-        global $DB;
-        $criterions = $DB->get_records('poasassignment_criterions',array('poasassignmentid'=>$this->poasassignment->id));
-        if ($criterions) {
-            $i = 0;
-            $data = new stdClass();
-            foreach ($criterions as $criterion) {
-                $data->name[$i] = $criterion->name;
-                $data->description[$i] = $criterion->description;
-                $data->weight[$i] = $criterion->weight;
-                $data->source[$i] = $criterion->graderid;
-                $data->criterionid[$i] = $criterion->id;
-                $i++;
-            }
-            return $data;
-        }
-    }
 
-    /**
-     * Update instance criterions. Includes:
-     *  - delete criterions, that marked as 'to be deleted';
-     *  - update existing criterions;
-     *  - create new criterions.
-     *  
-     * @access public
-     * @param array $criterions criterions objects
-     * @return array inserted criterions
-     */
-    public function update_criterions($criterions) {
-        global $DB;
-        foreach ($criterions as $key => $criterion) {
-            if ($criterion->delete) {
-                // Delete criterion and all grades
-                $DB->delete_records('poasassignment_criterions', array('id' => $criterion->id));
-                $DB->delete_records('poasassignment_rating_values', array('criterionid' => $criterion->id));
-                // Only new criterions must be returned
-                unset($criterions[$key]);
-            }
-            else {
-                unset($criterion->delete);
-                if (!isset($criterion->id) || $criterion->id == -1) {
-                    // Insert new criterions
-                    unset($criterion->id);
-                    $criterion->id = $DB->insert_record('poasassignment_criterions', $criterion);
-                }
-                else {
-                    // Update existing criterions
-                    $DB->update_record('poasassignment_criterions', $criterion);
-                    // Only new criterions must be returned
-                    unset($criterions[$key]);
-                }
-            }
-        }
-        return $criterions;
-    }
-    
     /**
      * Updates rating for each assignee's attempt . Update values in table
      * {poasassignment_attempts} and Moodle Gradebook.
@@ -671,82 +606,48 @@ class poasassignment_model {
         $attempts = $DB->get_records('poasassignment_attempts', array('assigneeid' => $assigneeid), 'id', 'id, rating, ratingdate, attemptdate');
         if (count($attempts) > 0) {
             $assignee = $DB->get_record('poasassignment_assignee', array('id' => $assigneeid));
-            // Calculate total weight of criterions
-            $criterions = $DB->get_records('poasassignment_criterions', array('poasassignmentid' => $assignee->poasassignmentid), 'id', 'id, weight');
-            $totalweight = 0;
-            foreach ($criterions as $criterion) {
-                $totalweight += $criterion->weight;
-            }
-            // Calculate relative weight for each criterion
-            foreach ($criterions as $criterion) {
-                $criterion->relativeweight = round($criterion->weight / $totalweight, 2);
-            }
             foreach ($attempts as $attempt) {
-                $ratingvalues = $DB->get_records('poasassignment_rating_values', array('attemptid' => $attempt->id), 'id', 'id, value, criterionid, attemptid');
-                // Calculate total rating for each attempt
-                $rating = 0;
-                foreach ($ratingvalues as $ratingvalue) {
-                    $rating += $ratingvalue->value * $criterions[$ratingvalue->criterionid]->relativeweight;
+                $ratingvalues = $DB->get_records('poasassignment_rating', array('attemptid' => $attempt->id), 'id');
+                if (count($ratingvalues)){
+                    $attempt->rating = reset($ratingvalues)->value;
+                    $attempt->ratingdate = time();
+                    $DB->update_record('poasassignment_attempts', $attempt);
                 }
-
-                $attempt->rating = $rating;
-                $attempt->ratingdate = time();
-                $DB->update_record('poasassignment_attempts', $attempt);
             }
             $this->update_assignee_gradebook_grade($assignee);
         }
     }
     
+
     /**
-     * Put grade on every criterion in each assignee's attempt
-     * 
+     * Puts rating in database
+     *
      * @access public
-     * @param int $assigneeid assignee id
-     * @param array $criterions criterion objects
-     * @param mixed $value rating
-     * @param string $comment comment string
-     */
-    public function new_criterion_rating($assigneeid, $criterions, $value, $comment = '') {
-        global $DB;
-        $attempts = $DB->get_records('poasassignment_attempts', array('assigneeid' => $assigneeid));
-        foreach ($attempts as $attempt) {
-            if ($value === 'total') {
-                $value = $attempt->rating;
-            }
-            foreach ($criterions as $criterion) {
-                $this->put_rating($criterion->id, $attempt->id, $value, $comment);
-            }
-        }
-    }
-    /**
-     * Puts rating on criterion in database
-     * 
-     * @access public
-     * @param int $criterionid criterion id
      * @param int $attemptid attempt id
      * @param int $value rating value
      * @param string $commentmessage comment to rating (optional)
      */
-    public function put_rating($criterionid, $attemptid, $value, $commentmessage) {
+    public function put_rating($attemptid, $value, $commentmessage) {
         global $DB;
-        $rating = new stdClass();
-        $rating->criterionid = $criterionid;
+        $rating            = new stdClass();
+        $rating->value     = $value;
         $rating->attemptid = $attemptid;
-        $rating->value = $value;
 
-        $id = $DB->insert_record('poasassignment_rating_values', $rating);
-        // Insert comment
+        $id = $DB->insert_record('poasassignment_rating', $rating);
+
+        // Insert a comment
         $cm = get_coursemodule_from_instance('poasassignment', $this->poasassignment->id);
+        // TODO until Moodle 2.8: Replace deprecated function get_context_instance
         $context = get_context_instance(CONTEXT_MODULE, $cm->id);
 
-        $options = new stdClass();
-        $options->area    = 'poasassignment_comment';
+        $options             =  new stdClass();
+        $options->area       = 'poasassignment_comment';
         $options->pluginname = 'poasassignment';
-        $options->context = $context;
-        $options->cm = $cm;
-        $options->showcount = true;
-        $options->component = 'mod_poasassignment';
-        $options->itemid  = $id;
+        $options->context    =  $context;
+        $options->cm         =  $cm;
+        $options->showcount  =  true;
+        $options->component  = 'mod_poasassignment';
+        $options->itemid     =  $id;
 
         $comment = new comment($options);
         $comment->add($commentmessage);
@@ -759,11 +660,8 @@ class poasassignment_model {
         $assignee = $DB->get_record('poasassignment_assignee',array('id'=>$attempt->assigneeid));
         $data = new stdClass();
         $data->final = $assignee->finalized;
-        if ($ratingvalues = $DB->get_records('poasassignment_rating_values',array('attemptid'=>$attempt->id))) {
-            foreach ($ratingvalues as $ratingvalue) {
-                $field = 'criterion' . $ratingvalue->criterionid;
-                $data->$field = $ratingvalue->value;
-            }
+        if ($ratingvalues = $DB->get_records('poasassignment_rating',array('attemptid'=>$attempt->id))) {
+            $data->value = reset($ratingvalues)->value;
             return $data;
         }
     }
@@ -776,13 +674,7 @@ class poasassignment_model {
      */
     function save_grade($assigneeid, $data) {
         global $DB;
-        $dfs = get_object_vars($data);
-        foreach ($dfs as $dfk => $dfv) {
-            //echo "$dfk=>$dfv<br>";
-            //echo $data->criterion1.'<br>';
-        }
-        //$criterions = $DB->get_records('poasassignment_criterions',
-        //                               array('poasassignmentid' => $this->poasassignment->id));
+
         $rating = 0;
         $cm = get_coursemodule_from_instance('poasassignment', $this->poasassignment->id);
         $context = get_context_instance(CONTEXT_MODULE, $cm->id);
@@ -798,43 +690,12 @@ class poasassignment_model {
         $attemptscount = $DB->count_records('poasassignment_attempts', array('assigneeid' => $assigneeid));
         $attempt = $DB->get_record('poasassignment_attempts',
                                    array('assigneeid' => $assigneeid, 'attemptnumber' => $attemptscount));
-        //foreach ($criterions as $criterion) {
-        /*    $elementname = 'criterion'.$criterion->id;
-            $elementcommentname = 'criterion'.$criterion->id.'comment';
-            if (!$DB->record_exists('poasassignment_rating_values', array('attemptid' => $attempt->id, 'criterionid' => $criterion->id))) {
-                $rec = new stdClass();
-                $rec->attemptid = $attempt->id;
-                $rec->criterionid = $criterion->id;
-                $rec->assigneeid = $assigneeid;
-                if ($attempt->draft == 0)
-                    $rec->value = $data->$elementname;
-                $ratingvalueid = $DB->insert_record('poasassignment_rating_values', $rec);
-
-                $options->itemid  = $ratingvalueid;
-                $comment = new comment($options);
-                $comment->add($data->$elementcommentname);
-            }
-            else {
-                $ratingvalue = $DB->get_record('poasassignment_rating_values', array('attemptid' => $attempt->id, 'criterionid' => $criterion->id));
-                if ($attempt->draft == 0)
-                    $ratingvalue->value = $data->$elementname;
-                $DB->update_record('poasassignment_rating_values', $ratingvalue);
-
-                //$options->itemid  = $ratingvalue->id;
-                //$comment = new comment($options);
-                //$comment->add($data->$elementcommentname);
-            }
-            if ($attempt->draft == 0) {
-                $rating += $data->$elementname * round($criterion->weight / $data->weightsum, 2);
-            }*/
-        //}
         if ($attempt->draft == 0) {
             $attempt->rating = $rating;
         }
         $attempt->ratingdate = time();
         $DB->update_record('poasassignment_attempts', $attempt);
         $assignee = $DB->get_record('poasassignment_assignee', array('id'=>$assigneeid));
-//        $assignee->rating=$rating;
         $assignee->finalized=isset($data->final);
         $DB->update_record('poasassignment_assignee', $assignee);
         if ($this->poasassignment->flags & ALL_ATTEMPTS_AS_ONE) {
@@ -1261,69 +1122,13 @@ class poasassignment_model {
     }
     // Runs after adding submission. Calls all graders, used in module.
     public function test_attempt($attemptid) {
-        //echo 'testing';
         global $DB;
-        $usedgraders = $DB->get_records('poasassignment_used_graders',
-                                        array('poasassignmentid' => $this->poasassignment->id));
-        if(count($usedgraders) == 0) {
-            return;
-        }
-        $attempt = $DB->get_record('poasassignment_attempts', array('id' => $attemptid));
-        foreach ($usedgraders as $usedgrader) {
-            //echo $usedgrader->id;
-            $graderrecord = $DB->get_record('poasassignment_graders', array('id' => $usedgrader->graderid));
+        // TODO: Here need to write code which will:
+        // TODO: 1) find all available graders (grader is the part of grading form.
+        // TODO: For now - weightedtotal is only supported);
+        // TODO: 2) assess every criterion of weightedtotal by specified grader;
+        // TODO: 3) put the rating values and grade for poasassignment (via advanced grading framework methods);
 
-            require_once($graderrecord->path);
-            $gradername = $graderrecord->name;
-            $grader = new $gradername;
-            $rating = $grader->test_attempt($attemptid);
-            //echo $rating ;
-
-            $criterions = $DB->get_records('poasassignment_criterions',
-                                           array('poasassignmentid' => $this->poasassignment->id,
-                                                 'graderid' => $usedgrader->graderid));
-            foreach ($criterions as $criterion) {
-                $ratingvalue = new stdClass();
-                $ratingvalue->attemptid = $attemptid;
-                $ratingvalue->criterionid = $criterion->id;
-
-                $ratingvalue->assigneeid = $attempt->assigneeid;
-
-                $ratingvalue->value = $rating;
-                //if ($attempt->draft == 0)
-                //    $ratingvalue->value = $data->$elementname;
-                //echo 'adding grade';
-                $ratingvalueid = $DB->insert_record('poasassignment_rating_values', $ratingvalue);
-            }
-
-        }
-        // if attempt has grades for all criterions, caluclulate total grade
-        $criterions = $DB->get_records('poasassignment_criterions', array('poasassignmentid' => $this->poasassignment->id));
-        $allcriterions = true;
-        $totalweight = 0;
-        $criteriongrades = array();
-        foreach($criterions as $criterion) {
-            if(!$DB->record_exists('poasassignment_rating_values', array('criterionid' => $criterion->id, 'attemptid' => $attemptid))) {
-                $allcriterions = false;
-                break;
-            }
-            else {
-                $rating = $DB->get_record('poasassignment_rating_values', array('criterionid' => $criterion->id, 'attemptid' => $attemptid));
-                $criteriongrades[$criterion->id] = $rating->value;
-                $totalweight += $criterion->weight;
-            }
-        }
-        if ($allcriterions) {
-            $grade = 0;
-            foreach($criterions as $criterion) {
-                $grade += $criteriongrades[$criterion->id] * round($criterion->weight / $totalweight, 2);
-            }
-            $attempt->rating = $grade;
-            $attempt->ratingdate = time();
-            $DB->update_record('poasassignment_attempts', $attempt);
-            $this->update_assignee_gradebook_grade($DB->get_record('poasassignment_assignee', array('id' => $attempt->assigneeid)));
-            // TODO Просто вызвать функцию, которая выставляет оценку
-        }
     }
     
     /**
@@ -2275,7 +2080,7 @@ class poasassignment_model {
         $attempts = $DB->get_records('poasassignment_attempts', array('assigneeid' => $assigneeid), 'id');
         foreach ($attempts as $attempt) {
             // Delete all submissions for each attempt
-            $DB->delete_records('poasassignment_rating_values', array('attemptid' => $attempt->id));
+            $DB->delete_records('poasassignment_rating', array('attemptid' => $attempt->id));
             // Delete all grades for each attempt
             $DB->delete_records('poasassignment_submissions', array('attemptid' => $attempt->id));
         }
@@ -2399,7 +2204,7 @@ class poasassignment_model {
 
     /**
      * Get row for flexible assignees row (used while confirming updating tasks,
-     * fields, criterions)
+     * fields)
      *
      * @access public
      * @param object $assignee assignee record
@@ -2660,10 +2465,11 @@ class poasassignment_model {
                     if ($pluginsarray[$submission->answerid])
                         $pluginsarray[$submission->answerid]->delete_submission($attempt->id, $cm->id);
                 }
-                // Delete all submissions for each attempt
-                $DB->delete_records('poasassignment_rating_values', array('attemptid' => $attempt->id));
-                // Delete all grades for each attempt
 
+                // Delete all grades for each attempt
+                $DB->delete_records('poasassignment_rating', array('attemptid' => $attempt->id));
+
+                // Delete all submissions for each attempt
                 $DB->delete_records('poasassignment_submissions', array('attemptid' => $attempt->id));
 
                 // Delete comment files
@@ -2730,28 +2536,10 @@ class poasassignment_model {
         return $graderrecords;
     }
 
-    /**
-     * Get criterions for grader in poasassignment instance
-     *
-     * @param $poasassignmentid
-     * @param $graderid
-     */
-    public function get_criterions($poasassignmentid, $graderid) {
+    public function delete_rating($attemptid) {
         global $DB;
-        $sql = 'SELECT cr.*
-        FROM {poasassignment_criterions} cr
-        WHERE cr.graderid=' . $graderid . ' AND cr.poasassignmentid=' . $poasassignmentid;
-        $criterions = $DB->get_records_sql($sql);
-        return $criterions;
-    }
-
-    public function delete_rating_values($criterionids, $attemptid) {
-        global $DB;
-        $inorequal = $DB->get_in_or_equal($criterionids);
-        $sql = 'DELETE FROM {poasassignment_rating_values}
-            WHERE {poasassignment_rating_values}.attemptid=' . $attemptid .'
-            AND {poasassignment_rating_values}.criterionid' . $inorequal[0];
-        $DB->execute($sql, $inorequal[1]);
+        $sql = 'DELETE FROM {poasassignment_rating} WHERE {poasassignment_rating}.attemptid=' . $attemptid;
+        $DB->execute($sql);
     }
 
     public function get_attempt_assignee($attemptid) {
