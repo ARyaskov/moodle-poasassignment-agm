@@ -2,6 +2,9 @@
 require_once('lib.php');
 require_once('answer/answer.php');
 require_once($CFG->dirroot . '/comment/lib.php');
+require_once("HTML/QuickForm/input.php");
+require_once($CFG->libdir . '/gradelib.php');
+require_once($CFG->dirroot . '/grade/grading/lib.php');
 comment::init();
 /**
  * Main DB-work class. Singletone
@@ -2759,4 +2762,123 @@ class poasassignment_model {
         WHERE {poasassignment_attempts}.id=' . $attemptid;
         return $DB->get_record_sql($sql);
     }
+
+    /**
+     * Add elements to grade form.
+     *
+     * @param MoodleQuickForm $mform
+     * @param stdClass $data
+     * @param array $params
+     * @return void
+     */
+    function add_grade_form_elements(MoodleQuickForm $mform, stdClass $data, $params) {
+        global $USER, $CFG;
+        $settings = $this->get_instance();
+
+        $rownum = 1;
+        $last = 2;
+        $useridlistid = array($USER->id);
+        $userid = $USER->id;
+        $attemptnumber = -1;
+
+            $useridlist = array($userid);
+            $rownum = 0;
+            $useridlistid = '';
+
+
+        $userid = $useridlist[$rownum];
+        $grade = $this->get_last_attempt($userid);
+
+        // Add advanced grading.
+        $gradingdisabled = false; //$this->grading_disabled($userid);
+        $gradinginstance = $this->get_grading_instance($userid, $grade, $gradingdisabled);
+
+        $mform->addElement('header', 'gradeheader', get_string('grade'));
+        if ($gradinginstance) {
+            $gradingelement = $mform->addElement('grading',
+                'advancedgrading',
+                get_string('grade').':',
+                array('gradinginstance' => $gradinginstance));
+            if ($gradingdisabled) {
+                $gradingelement->freeze();
+            } else {
+                $mform->addElement('hidden', 'advancedgradinginstanceid', $gradinginstance->get_id());
+                $mform->setType('advancedgradinginstanceid', PARAM_INT);
+            }
+        } else {
+            // Use simple direct grading.
+            if ($this->get_instance()->grade > 0) {
+                $name = get_string('gradeoutof', 'assign', $this->get_instance()->grade);
+                if (!$gradingdisabled) {
+                    $gradingelement = $mform->addElement('text', 'grade', $name);
+                    $mform->addHelpButton('grade', 'gradeoutofhelp', 'poasassignment');
+                    $mform->setType('grade', PARAM_RAW);
+                } else {
+                    $mform->addElement('hidden', 'grade', $name);
+                    $mform->hardFreeze('grade');
+                    $mform->setType('grade', PARAM_RAW);
+                    $strgradelocked = get_string('gradelocked', 'poasassignment');
+                    $mform->addElement('static', 'gradedisabled', $name, $strgradelocked);
+                    $mform->addHelpButton('gradedisabled', 'gradeoutofhelp', 'poasassignment');
+                }
+            } else {
+                $grademenu = array(-1 => get_string("nograde")) + make_grades_menu($this->get_instance()->grade);
+                if (count($grademenu) > 1) {
+                    $gradingelement = $mform->addElement('select', 'grade', get_string('grade') . ':', $grademenu);
+
+                    // The grade is already formatted with format_float so it needs to be converted back to an integer.
+                    if (!empty($data->grade)) {
+                        $data->grade = (int)unformat_float($data->grade);
+                    }
+                    $mform->setType('grade', PARAM_INT);
+                    if ($gradingdisabled) {
+                        $gradingelement->freeze();
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Get an instance of a grading form if advanced grading is enabled.
+     *
+     * @param int $userid - The student userid
+     * @param stdClass|false $grade - The grade record
+     * @param bool $gradingdisabled
+     * @return mixed gradingform_instance|null $gradinginstance
+     */
+    protected function get_grading_instance($userid, $grade, $gradingdisabled) {
+        global $CFG, $USER;
+
+        $grademenu = make_grades_menu(100);
+        $allowgradedecimals = true;//$this->get_instance()->grade > 0;
+
+        $advancedgradingwarning = false;
+        $gradingmanager = get_grading_manager($this->context, 'mod_poasassignment', 'submissions');
+        $gradinginstance = null;
+        if ($gradingmethod = $gradingmanager->get_active_method()) {
+            $controller = $gradingmanager->get_controller($gradingmethod);
+            if ($controller->is_form_available()) {
+                $itemid = null;
+                if ($grade) {
+                    $itemid = $grade->id;
+                }
+                if ($gradingdisabled && $itemid) {
+                    $gradinginstance = $controller->get_current_instance($USER->id, $itemid);
+                } else if (!$gradingdisabled) {
+                    $instanceid = optional_param('advancedgradinginstanceid', 0, PARAM_INT);
+                    $gradinginstance = $controller->get_or_create_instance($instanceid,
+                        $USER->id,
+                        $itemid);
+                }
+            } else {
+                $advancedgradingwarning = $controller->form_unavailable_notification();
+            }
+        }
+        if ($gradinginstance) {
+            $gradinginstance->get_controller()->set_grade_range($grademenu, $allowgradedecimals);
+        }
+        return $gradinginstance;
+    }
+
 }

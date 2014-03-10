@@ -91,7 +91,7 @@ class grade_form extends moodleform {
         $mform->addElement('header','studentsubmission',get_string('studentsubmission','poasassignment'));
         require_once('attempts.php');
         $mform->addElement('static',null,null,attempts_page::show_attempt($attempt));
-        $mform->addElement('header','gradeeditheader',get_string('gradeeditheader','poasassignment'));
+        //$mform->addElement('header','gradeeditheader',get_string('gradeeditheader','poasassignment'));
         $criterions=$DB->get_records('poasassignment_criterions',array('poasassignmentid'=>$instance['poasassignmentid']));
         for($i=0;$i<101;$i++) 
             $opt[]=$i.'/100';
@@ -107,6 +107,17 @@ class grade_form extends moodleform {
         $options->component = 'mod_poasassignment';
         $options->context = $context;
         $options->showcount = true;
+
+        //list($poasassignment, $data, $params) = $this->_customdata;
+        // Visible elements.
+        $params = array();
+        $poasmodel->add_grade_form_elements($mform, new stdClass(), $params);
+
+        if ($data) {
+            $this->set_data($data);
+        }
+
+        /*
         foreach($criterions as $criterion) {
             $mform->addElement('html', $OUTPUT->box_start());
             // show grading element
@@ -138,7 +149,9 @@ class grade_form extends moodleform {
                 $mform->addElement('htmleditor','criterion'.$criterion->id.'comment',get_string('comment','poasassignment'));   
             
             $mform->addElement('html',$OUTPUT->box_end());
-        }
+        }*/
+
+
         if($attempt->draft == 0 || has_capability('mod/poasassignment:manageanything',$context)) {
             $mform->addElement('checkbox', 'final', get_string('finalgrade','poasassignment'));
         }
